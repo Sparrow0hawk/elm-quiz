@@ -567,21 +567,21 @@ viewReviewAnswerState model question chosenAnswer =
                         ]
                         |> text
 
-                Answered (InvalidAnswer answer) ->
+                Answered (InvalidAnswer anAnswer) ->
                     let
                         invalidAnswerMessage =
                             String.concat
                                 [ "We are so sorry but your answer "
                                 , "\""
-                                , answer
+                                , anAnswer
                                 , "\""
                                 , " is incorrect!"
                                 ]
 
                         correctAnswers =
                             List.map
-                                (\answer ->
-                                    case answer of
+                                (\ans ->
+                                    case ans of
                                         CorrectAnswer value ->
                                             Just value
 
@@ -786,14 +786,14 @@ createGame config =
 
                 ( False, question :: otherQuestions ) ->
                     let
-                        ( gameState, cmd ) =
+                        ( gameState, cmdState ) =
                             determineNewQuestionState config question
                     in
                     ( { questionQueue = List.take (config.maxQuestions - 1) otherQuestions
                       , answerHistory = []
                       , state = gameState
                       }
-                    , cmd
+                    , cmdState
                     )
     in
     ( { config = config
