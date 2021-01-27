@@ -2,7 +2,12 @@ module Quiz exposing
     ( Msg, Quiz(..)
     , initFromJson, initFromConfigBuilder, update, view, subscriptions
     , Difficulty(..)
-    , ConfigBuilder, configBuilder, setShuffleQuestions, setShuffleAnswers, setDifficulty, setMaxQuestions
+    , ConfigBuilder
+    , configBuilder
+    , setShuffleQuestions
+    , setShuffleAnswers
+    , setDifficulty
+    , setMaxQuestions
     )
 
 {-| A customizable quiz powered by Elm and Polymer
@@ -22,8 +27,8 @@ See the example on github.
 import Html exposing (..)
 import Html.Attributes as Attributes exposing (attribute)
 import Html.Events as Events exposing (onClick)
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (decode, optional, required)
+import Json.Decode as Decode exposing (Decoder, succeed)
+import Json.Decode.Pipeline exposing (optional, required)
 import Maybe.Extra
 import Random
 import Random.List
@@ -147,7 +152,7 @@ type Msg
     | NextQuestion
     | Restart
     | Stop
-    | Tick Time.Time
+    | Tick Time.Posix
 
 
 {-| Initialize a Quiz given a config as Json.Decode.Value record.
@@ -404,7 +409,7 @@ subscriptions appState =
         Active model ->
             case model.game.state of
                 AskingQuestionState _ (Just _) ->
-                    Time.every Time.second Tick
+                    Time.every 1000 Tick
 
                 _ ->
                     Sub.none
@@ -457,12 +462,11 @@ viewAskingQuestionState : Model -> Question -> Maybe CountDown -> Html Msg
 viewAskingQuestionState model question maybeCountDown =
     let
         buttonList =
-            case List.isEmpty question.answers of
-                True ->
-                    [ viewSkipButton ]
+            if List.isEmpty question.answers then
+                [ viewSkipButton ]
 
-                False ->
-                    List.map (viewAnswerButton model.config.difficulty) question.answers
+            else
+                List.map (viewAnswerButton model.config.difficulty) question.answers
 
         countDownElement =
             case maybeCountDown of
@@ -472,7 +476,7 @@ viewAskingQuestionState model question maybeCountDown =
                         [ node "paper-fab"
                             [ attribute "noink" "noink"
                             , Attributes.class "countdown"
-                            , attribute "label" <| toString seconds
+                            , attribute "label" <| String.fromInt seconds
                             ]
                             []
                         ]
@@ -686,10 +690,10 @@ viewConclusionState model =
         [ attribute "heading" "Report" ]
         [ ul
             []
-            [ li [] [ text <| "Correct: " ++ toString correct ]
-            , li [] [ text <| "Invalid: " ++ toString invalid ]
-            , li [] [ text <| "Skipped: " ++ toString skipped ]
-            , li [] [ text <| "Timed out: " ++ toString timedOut ]
+            [ li [] [ text <| "Correct: " ++ String.fromInt correct ]
+            , li [] [ text <| "Invalid: " ++ String.fromInt invalid ]
+            , li [] [ text <| "Skipped: " ++ String.fromInt skipped ]
+            , li [] [ text <| "Timed out: " ++ String.fromInt timedOut ]
             ]
         , div
             [ Attributes.class "continue-button-container" ]
@@ -801,17 +805,16 @@ createGame config =
 
 determineNewQuestionState : Config -> Question -> ( GameState, Cmd Msg )
 determineNewQuestionState { shuffleAnswers, difficulty } question =
-    case shuffleAnswers of
-        True ->
-            ( ShufflingAnswersState question
+    if shuffleAnswers then
+        ( ShufflingAnswersState question
             , Random.List.shuffle question.answers
                 |> Random.generate ProvidingAnswers
-            )
+        )
 
-        False ->
-            ( AskingQuestionState question (getCountDown difficulty)
-            , Cmd.none
-            )
+    else
+        ( AskingQuestionState question (getCountDown difficulty)
+        , Cmd.none
+        )
 
 
 
@@ -854,7 +857,7 @@ cardAction msg content =
 
 configDecoder : Decoder Config
 configDecoder =
-    decode Config
+    succeed Config
         |> required "providedQuestions" questionsDecoder
         |> optional "shuffleQuestions" Decode.bool False
         |> optional "shuffleAnswers" Decode.bool False
@@ -869,7 +872,7 @@ questionsDecoder =
 
 questionDecoder : Decoder Question
 questionDecoder =
-    decode Question
+    succeed Question
         |> required "question" Decode.string
         |> optional "additional_content" additionalContentsDecoder []
         |> required "answers" answersDecoder
