@@ -20,7 +20,8 @@ init flags =
         ( quiz, quizCmd ) =
             Quiz.initFromJson flags
     in
-        { quiz = quiz } ! [ Cmd.map ToQuiz quizCmd ]
+        { quiz = quiz } 
+        (quiz, Cmd.map [ToQuiz, quizCmd])
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -32,7 +33,7 @@ update msg ({ quiz } as model) =
                     Quiz.update quizMsg quiz
             in
                 { model | quiz = newQuizModel }
-                    ! [ Cmd.map ToQuiz newQuizCmd ]
+                (model, Cmd.map [ToQuiz, newQuizCmd])
 
 
 subscriptions : Model -> Sub Msg
@@ -48,7 +49,7 @@ view ({ quiz } as model) =
 
 main : Program Decode.Value Model Msg
 main =
-    Browser.elements
+    Browser.element
         { init = init
         , update = update
         , view = view
