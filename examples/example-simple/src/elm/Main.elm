@@ -3,7 +3,7 @@ module Main exposing (main)
 import Quiz
 import Html exposing (..)
 import Json.Decode as Decode exposing (Decoder)
-
+import Browser
 
 type Msg
     = ToQuiz Quiz.Msg
@@ -48,7 +48,7 @@ view ({ quiz } as model) =
 
 main : Program Decode.Value Model Msg
 main =
-    Html.programWithFlags
+    Browser.elements
         { init = init
         , update = update
         , view = view
