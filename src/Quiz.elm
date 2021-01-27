@@ -1,20 +1,9 @@
-module Quiz
-    exposing
-        ( Msg
-        , Quiz(..)
-        , initFromJson
-        , initFromConfigBuilder
-        , update
-        , view
-        , subscriptions
-        , Difficulty(..)
-        , ConfigBuilder
-        , configBuilder
-        , setShuffleQuestions
-        , setShuffleAnswers
-        , setDifficulty
-        , setMaxQuestions
-        )
+module Quiz exposing
+    ( Msg, Quiz(..)
+    , initFromJson, initFromConfigBuilder, update, view, subscriptions
+    , Difficulty(..)
+    , ConfigBuilder, configBuilder, setShuffleQuestions, setShuffleAnswers, setDifficulty, setMaxQuestions
+    )
 
 {-| A customizable quiz powered by Elm and Polymer
 
@@ -31,13 +20,13 @@ See the example on github.
 -}
 
 import Html exposing (..)
-import Html.Events as Events exposing (onClick)
 import Html.Attributes as Attributes exposing (attribute)
-import Random.List
-import Random
+import Html.Events as Events exposing (onClick)
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (decode, required, optional)
+import Json.Decode.Pipeline exposing (decode, optional, required)
 import Maybe.Extra
+import Random
+import Random.List
 import Time
 
 
@@ -219,8 +208,8 @@ initFromJson configJson =
             Decode.decodeValue configDecoder configJson
                 |> Result.withDefault defaultConfig
     in
-        createGame config
-            |> wrapModel
+    createGame config
+        |> wrapModel
 
 
 {-| Same as the initFromJson but now via a ConfigBuilder
@@ -289,7 +278,9 @@ update msg appState =
             innerUpdate msg model
 
         Stopped ->
-            appState ! []
+            ( appState
+            , Cmd.none
+            )
 
 
 innerUpdate : Msg -> Model -> ( Quiz, Cmd Msg )
@@ -306,7 +297,7 @@ innerUpdate msg ({ config, game } as model) =
                         , questionQueue = List.take (config.maxQuestions - 1) otherQuestions
                     }
             in
-                ( { model | game = newGame }, cmd ) |> wrapModel
+            ( { model | game = newGame }, cmd ) |> wrapModel
 
         ( ProvidingAnswers answers, ShufflingAnswersState question ) ->
             let
@@ -318,7 +309,10 @@ innerUpdate msg ({ config, game } as model) =
                                 (getCountDown model.config.difficulty)
                     }
             in
-                { model | game = newGame } ! [] |> wrapModel
+            ( { model | game = newGame }
+            , Cmd.none
+            )
+                |> wrapModel
 
         ( Tick time, AskingQuestionState question (Just countDown) ) ->
             let
@@ -331,15 +325,18 @@ innerUpdate msg ({ config, game } as model) =
                                     , chosenAnswer = TimedOut
                                     }
                             in
-                                { game
-                                    | answerHistory = answeredQuestion :: model.game.answerHistory
-                                    , state = ReviewAnswerState question TimedOut
-                                }
+                            { game
+                                | answerHistory = answeredQuestion :: model.game.answerHistory
+                                , state = ReviewAnswerState question TimedOut
+                            }
 
                         _ ->
                             { game | state = AskingQuestionState question (Just (countDown - 1)) }
             in
-                { model | game = newGame } ! [] |> wrapModel
+            ( { model | game = newGame }
+            , Cmd.none
+            )
+                |> wrapModel
 
         ( ChooseAnswer chosenAnswer, AskingQuestionState question _ ) ->
             let
@@ -354,7 +351,10 @@ innerUpdate msg ({ config, game } as model) =
                         , state = ReviewAnswerState question chosenAnswer
                     }
             in
-                { model | game = newGame } ! [] |> wrapModel
+            ( { model | game = newGame }
+            , Cmd.none
+            )
+                |> wrapModel
 
         ( NextQuestion, ReviewAnswerState _ _ ) ->
             let
@@ -375,17 +375,22 @@ innerUpdate msg ({ config, game } as model) =
                         , state = newGameState
                     }
             in
-                ( { model | game = newGame }, cmd ) |> wrapModel
+            ( { model | game = newGame }, cmd ) |> wrapModel
 
         ( Restart, _ ) ->
             createGame model.config |> wrapModel
 
         ( Stop, _ ) ->
-            Stopped ! []
+            ( Stopped
+            , Cmd.none
+            )
 
         ( _, _ ) ->
             -- Void on bibs
-            model ! [] |> wrapModel
+            ( model
+            , Cmd.none
+            )
+                |> wrapModel
 
 
 {-| subscriptions
@@ -478,12 +483,12 @@ viewAskingQuestionState model question maybeCountDown =
         additionalContents =
             List.map viewAdditionalContent question.additionalContent
     in
-        card
-            [ attribute "heading" question.question ]
-            [ countDownElement
-            , div [] additionalContents
-            , ul [] buttonList
-            ]
+    card
+        [ attribute "heading" question.question ]
+        [ countDownElement
+        , div [] additionalContents
+        , ul [] buttonList
+        ]
 
 
 viewAdditionalContent : AdditionalContent -> Html Msg
@@ -531,16 +536,16 @@ viewAnswerButton difficulty answer =
                 _ ->
                     "default"
     in
-        li
-            []
-            [ node "paper-button"
-                [ onClick <| ChooseAnswer (Answered answer)
-                , Attributes.class class
-                , Attributes.disabled isDisabled
-                , Attributes.attribute "raised" "raised"
-                ]
-                [ text <| getAnswerText answer ]
+    li
+        []
+        [ node "paper-button"
+            [ onClick <| ChooseAnswer (Answered answer)
+            , Attributes.class class
+            , Attributes.disabled isDisabled
+            , Attributes.attribute "raised" "raised"
             ]
+            [ text <| getAnswerText answer ]
+        ]
 
 
 viewReviewAnswerState : Model -> Question -> ChosenAnswer -> Html Msg
@@ -591,13 +596,13 @@ viewReviewAnswerState model question chosenAnswer =
                                     "The correct answer was: " ++ answer
 
                                 answers ->
-                                    "The correct answers where: " ++ (String.join ", " answers)
+                                    "The correct answers where: " ++ String.join ", " answers
                     in
-                        div
-                            []
-                            [ p [] [ text invalidAnswerMessage ]
-                            , p [] [ text correctAnswersMessage ]
-                            ]
+                    div
+                        []
+                        [ p [] [ text invalidAnswerMessage ]
+                        , p [] [ text correctAnswersMessage ]
+                        ]
 
                 Skipped ->
                     "You will not get points for skipping a question!" |> text
@@ -613,13 +618,13 @@ viewReviewAnswerState model question chosenAnswer =
                 Nothing ->
                     "Finish"
     in
-        card
-            [ attribute "heading" ("Review: " ++ question.question) ]
-            [ p [] [ resultHtml ]
-            , div
-                [ Attributes.class "continue-button-container" ]
-                [ paperButton NextQuestion nextButtonText ]
-            ]
+    card
+        [ attribute "heading" ("Review: " ++ question.question) ]
+        [ p [] [ resultHtml ]
+        , div
+            [ Attributes.class "continue-button-container" ]
+            [ paperButton NextQuestion nextButtonText ]
+        ]
 
 
 viewConclusionState : Model -> Html Msg
@@ -677,19 +682,19 @@ viewConclusionState model =
                 model.game.answerHistory
                 |> List.length
     in
-        card
-            [ attribute "heading" "Report" ]
-            [ ul
-                []
-                [ li [] [ text <| "Correct: " ++ (toString correct) ]
-                , li [] [ text <| "Invalid: " ++ (toString invalid) ]
-                , li [] [ text <| "Skipped: " ++ (toString skipped) ]
-                , li [] [ text <| "Timed out: " ++ (toString timedOut) ]
-                ]
-            , div
-                [ Attributes.class "continue-button-container" ]
-                [ paperButton Restart "Try again!" ]
+    card
+        [ attribute "heading" "Report" ]
+        [ ul
+            []
+            [ li [] [ text <| "Correct: " ++ toString correct ]
+            , li [] [ text <| "Invalid: " ++ toString invalid ]
+            , li [] [ text <| "Skipped: " ++ toString skipped ]
+            , li [] [ text <| "Timed out: " ++ toString timedOut ]
             ]
+        , div
+            [ Attributes.class "continue-button-container" ]
+            [ paperButton Restart "Try again!" ]
+        ]
 
 
 
@@ -780,18 +785,18 @@ createGame config =
                         ( gameState, cmd ) =
                             determineNewQuestionState config question
                     in
-                        ( { questionQueue = List.take (config.maxQuestions - 1) otherQuestions
-                          , answerHistory = []
-                          , state = gameState
-                          }
-                        , cmd
-                        )
+                    ( { questionQueue = List.take (config.maxQuestions - 1) otherQuestions
+                      , answerHistory = []
+                      , state = gameState
+                      }
+                    , cmd
+                    )
     in
-        ( { config = config
-          , game = game
-          }
-        , cmd
-        )
+    ( { config = config
+      , game = game
+      }
+    , cmd
+    )
 
 
 determineNewQuestionState : Config -> Question -> ( GameState, Cmd Msg )
